@@ -5,13 +5,13 @@
 #include <Eigen/Eigenvalues>
 
 #define NR_FACES 12
-#define K 6
+#define K 11
 
 using namespace cv;
 using namespace std;
 using namespace Eigen;
 
-//functie pentru calculul fetei medii
+// functie pentru calculul fetei medii
 uchar* getMeanArray(uchar** faces_array, int length)
 {
 	uchar* mean_array = new uchar[length];
@@ -28,7 +28,7 @@ uchar* getMeanArray(uchar** faces_array, int length)
 	return mean_array;
 }
 
-//functie pentru calculul matricei ce contine fetele - fata medie
+// functie pentru calculul matricei ce contine fetele - fata medie
 double** getMatrix(uchar** faces_array, uchar* mean_array, int rows, int cols)
 {
 	double** matrix = new double* [rows];
@@ -43,7 +43,7 @@ double** getMatrix(uchar** faces_array, uchar* mean_array, int rows, int cols)
 	return matrix;
 }
 
-//functie pentru a converti un tablou bidimensional la o matrice din libraria Eigen
+// functie pentru a converti un tablou bidimensional la o matrice din libraria Eigen
 MatrixXd ConvertToEigenMatrix(double** data, int rows, int cols)
 {
 	MatrixXd eMatrix(rows, cols);
@@ -54,7 +54,7 @@ MatrixXd ConvertToEigenMatrix(double** data, int rows, int cols)
 	return eMatrix;
 }
 
-//functie pentru aflarea minimului dintr-un vector din libraria Eigen
+// functie pentru aflarea minimului dintr-un vector din libraria Eigen
 double minEigenVector(VectorXd v, int length)
 {
 	double min = DBL_MAX;
@@ -66,7 +66,7 @@ double minEigenVector(VectorXd v, int length)
 	return min;
 }
 
-//functie pentru aflarea maximului dintr-un vector din libraria Eigen
+// functie pentru aflarea maximului dintr-un vector din libraria Eigen
 double maxEigenVector(VectorXd v, int length)
 {
 	double max = DBL_MIN;
@@ -78,7 +78,7 @@ double maxEigenVector(VectorXd v, int length)
 	return max;
 }
 
-//functie pentru normalizarea matricei ce contine vectorii proprii
+// functie pentru normalizarea matricei ce contine vectorii proprii
 MatrixXd normalize(MatrixXd V2, int length, int val)
 {
 	for (int i = 0; i < NR_FACES; i++) {
@@ -123,11 +123,89 @@ void selectionSort(double arr[])
 	}
 }
 
+// functie pentru afisarea mai multor imagini in aceeasi fereastra
+// https://github.com/opencv/opencv/wiki/DisplayManyImages
+void ShowManyImages(string title, int nArgs, ...) {
+	int size;
+	int i;
+	int m, n;
+	int x, y;
+	int w, h;
+
+	float scale;
+	int max;
+
+	if (nArgs <= 0) {
+		printf("Number of arguments too small....\n");
+		return;
+	}
+	else if (nArgs > 14) {
+		printf("Number of arguments too large, can only handle maximally 12 images at a time ...\n");
+		return;
+	}
+	else if (nArgs == 1) {
+		w = h = 1;
+		size = 300;
+	}
+	else if (nArgs == 2) {
+		w = 2; h = 1;
+		size = 300;
+	}
+	else if (nArgs == 3 || nArgs == 4) {
+		w = 2; h = 2;
+		size = 300;
+	}
+	else if (nArgs == 5 || nArgs == 6) {
+		w = 3; h = 2;
+		size = 200;
+	}
+	else if (nArgs == 7 || nArgs == 8) {
+		w = 4; h = 2;
+		size = 200;
+	}
+	else {
+		w = 4; h = 3;
+		size = 150;
+	}
+
+	Mat DispImage = Mat::zeros(Size(100 + size * w, 60 + size * h), CV_8UC3);
+
+	va_list args;
+	va_start(args, nArgs);
+
+	for (i = 0, m = 20, n = 20; i < nArgs; i++, m += (20 + size)) {
+		Mat img = va_arg(args, Mat);
+		if (img.empty()) {
+			printf("Invalid arguments");
+			return;
+		}
+		x = img.cols;
+		y = img.rows;
+		max = (x > y) ? x : y;
+		scale = (float)((float)max / size);
+
+		if (i % w == 0 && m != 20) {
+			m = 20;
+			n += 20 + size;
+		}
+
+		Rect ROI(m, n, (int)(x / scale), (int)(y / scale));
+		Mat temp; resize(img, temp, Size(ROI.width, ROI.height));
+		temp.copyTo(DispImage(ROI));
+	}
+
+	namedWindow(title, 1);
+	imshow(title, DispImage);
+
+	va_end(args);
+}
+
 int main()
 {
-	//citim fetele si le stocam intr-un tablou
-	//https://github.com/j2kun/eigenfaces
+	// imaginile folosite au fost obtinute din acest repository:
+	// https://github.com/j2kun/eigenfaces
 
+	// citim fetele si le stocam intr-un tablou
 	string path = "Images/person0/face0.jpg";
 	Mat faces_img[NR_FACES];
 
@@ -139,7 +217,7 @@ int main()
 		faces_img[i] = imread(path, IMREAD_GRAYSCALE);
 	}
 
-	//verificam daca s-au citit corect imaginile
+	// verificam daca s-au citit corect imaginile
 	for (int i = 0; i < NR_FACES; i++)
 		if (faces_img[i].empty()) {
 			cout << "Image File Not Found: " << i << endl;
@@ -147,57 +225,52 @@ int main()
 			return -1;
 		}
 
-	//afisam imaginile citite
-	Mat l0c0, l0c1, l1c0, l1c1, l2c0, l2c1;
-	Mat l1, l2, l3;
+	// afisam imaginile citite
 
-	hconcat(faces_img[0], faces_img[1], l0c0);
-	hconcat(faces_img[2], faces_img[3], l0c1);
-	hconcat(faces_img[4], faces_img[5], l1c0);
-	hconcat(faces_img[6], faces_img[7], l1c1);
-	hconcat(faces_img[8], faces_img[9], l2c0);
-	hconcat(faces_img[10], faces_img[11], l2c1);
+	Mat faces_color[NR_FACES];
+	for (int i = 0; i < NR_FACES; i++)
+		cvtColor(faces_img[i], faces_color[i], COLOR_GRAY2RGB);
 
-	hconcat(l0c0, l0c1, l1);
-	hconcat(l1c0, l1c1, l2);
-	hconcat(l2c0, l2c1, l3);
+	ShowManyImages("Faces", 12, faces_color[0], faces_color[1], faces_color[2], faces_color[3],
+		faces_color[4], faces_color[5], faces_color[6], faces_color[7], faces_color[8],
+		faces_color[9], faces_color[10], faces_color[11]);
 
-	vconcat(l1, l2, l1);
-	vconcat(l1, l3, l1);
-
-	imshow("faces", l1);
-
-	//reprezentam fetele sub forma unei matrice
+	// reprezentam fetele sub forma unei matrice
 	uchar** faces_array = new uchar * [NR_FACES];
 	uint length = faces_img[0].total() * faces_img[0].channels();
 
 	for (int i = 0; i < NR_FACES; i++)
 		faces_array[i] = faces_img[i].isContinuous() ? faces_img[i].data : faces_img[i].clone().data;
 
-	//calculam fata medie
+	// calculam fata medie
 	uchar* mean_array = getMeanArray(faces_array, length);
 
-	//convertim vectorul la un obiect de tip Mat
+	// convertim vectorul la un obiect de tip Mat
 	Mat mean_face(faces_img[0].rows, faces_img[0].cols, faces_img[0].type(), mean_array);
-	imshow("mean face", mean_face);
 
-	//calculam matricea ce contine fetele - fata medie
+	// afisam fata medie
+	Mat mean_face_color;
+	cvtColor(mean_face, mean_face_color, COLOR_GRAY2RGB);
+	ShowManyImages("Mean Face", 1, mean_face_color);
+
+	// calculam matricea ce contine fetele - fata medie
 	double** matrix = getMatrix(faces_array, mean_array, length, NR_FACES);
 
-	//convertim tabloul bidimensional la o matrice din libraria Eigen
+	// convertim tabloul bidimensional la o matrice din libraria Eigen
 	MatrixXd eMatrix = ConvertToEigenMatrix(matrix, length, NR_FACES);
 
-	//calculam matricea de covarianta
+	// calculam matricea de covarianta
 	MatrixXd covMatrix = eMatrix.transpose() * eMatrix;
 
-	//calculam vectorii si valorile proprii
+	// calculam vectorii si valorile proprii
 	EigenSolver<MatrixXd> s(covMatrix);
 
 	MatrixXd D = s.pseudoEigenvalueMatrix();
 	MatrixXd V = s.pseudoEigenvectors();
-	//cout << "Matricea cu valorile proprii este:" << endl << D << endl;
-	//cout << "Matricea cu vectorii proprii este:" << endl << V << endl;
+	// cout << "Matricea cu valorile proprii este:" << endl << D << endl;
+	// cout << "Matricea cu vectorii proprii este:" << endl << V << endl;
 
+	// sortam vectorii proprii in functie de valorile proprii
 	double* eigenvalues = new double[NR_FACES];
 	double* eigenvalues_sorted = new double[NR_FACES];
 	for (int i = 0; i < NR_FACES; i++) {
@@ -207,18 +280,19 @@ int main()
 
 	selectionSort(eigenvalues_sorted);
 
+	// vectorii proprii se vor gasi in matricea D
 	for (int i = 0; i < NR_FACES; i++)
 		for (int j = 0; j < NR_FACES; j++)
 			if (eigenvalues_sorted[i] == eigenvalues[j])
 				D.col(i) = V.col(j);
 
-	//mapam vectorii proprii in matricea C' folosind relatia ui = A * vi
+	// mapam vectorii proprii in matricea C' folosind relatia ui = A * vi
 	MatrixXd U = eMatrix * D;
 
-	//normalizam vectorii proprii
+	// normalizam vectorii proprii
 	U = normalize(U, length, 255);
 
-	//extragem vectorii proprii
+	// extragem vectorii proprii
 	uchar** eigenvectors = new uchar * [NR_FACES];
 
 	for (int i = 0; i < NR_FACES; i++)
@@ -228,64 +302,55 @@ int main()
 		for (int j = 0; j < length; j++)
 			eigenvectors[i][j] = U.col(i)[j];
 
-	//reprezentam vectorii proprii sub forma unor obiecte de tip Mat
+	// reprezentam vectorii proprii sub forma unor obiecte de tip Mat pentru a putea fi afisati
 	Mat eigenfaces[NR_FACES];
 
 	for (int i = 0; i < NR_FACES; i++)
 		eigenfaces[i] = Mat(faces_img[0].rows, faces_img[0].cols, faces_img[0].type(), eigenvectors[i]);
 
-	//afisam eigenfaces
-	hconcat(eigenfaces[0], eigenfaces[1], l0c0);
-	hconcat(eigenfaces[2], eigenfaces[3], l0c1);
-	hconcat(eigenfaces[4], eigenfaces[5], l1c0);
-	hconcat(eigenfaces[6], eigenfaces[7], l1c1);
-	hconcat(eigenfaces[8], eigenfaces[9], l2c0);
-	hconcat(eigenfaces[10], eigenfaces[11], l2c1);
-
-	hconcat(l0c0, l0c1, l1);
-	hconcat(l1c0, l1c1, l2);
-	hconcat(l2c0, l2c1, l3);
-
-	vconcat(l1, l2, l1);
-	vconcat(l1, l3, l1);
-
-	imshow("eigenfaces", l1);
-
-	//reprezentam fetele initiale prin combinatii liniare ale vectorilor proprii
-	MatrixXd coeff_faces(NR_FACES, NR_FACES);
+	// afisam eigenfaces
+	Mat eigenfaces_color[NR_FACES];
 	for (int i = 0; i < NR_FACES; i++)
-		coeff_faces.col(i) = U.colPivHouseholderQr().solve(eMatrix.col(i));
+		cvtColor(eigenfaces[i], eigenfaces_color[i], COLOR_GRAY2RGB);
 
-	//cout << "Matricea cu coeficienti:\n " << coeff_faces << endl;
-	
+	ShowManyImages("Eigenfaces", 12, eigenfaces_color[0], eigenfaces_color[1], eigenfaces_color[2], eigenfaces_color[3],
+		eigenfaces_color[4], eigenfaces_color[5], eigenfaces_color[6], eigenfaces_color[7], eigenfaces_color[8],
+		eigenfaces_color[9], eigenfaces_color[10], eigenfaces_color[11]);
 
-	//citim o alta imagine cu aceeasi persoana si calculam coeficientii
-	Mat input_face = imread("Images/person3/face2.jpg", IMREAD_GRAYSCALE);
+	//selectam doar primii K vectori proprii
+	MatrixXd U_K = U.block(0, 0, length, K);
 
+	// reprezentam fetele initiale prin combinatii liniare ale vectorilor proprii
+	MatrixXd coeff_faces(K, NR_FACES);
+	for (int i = 0; i < NR_FACES; i++)
+		coeff_faces.col(i) = U_K.colPivHouseholderQr().solve(eMatrix.col(i));
+
+	// citim o alta imagine ce nu se afla in setul initial cu o persoana ce se afla in set si calculam coeficientii
+	Mat input_face = imread("Images/person4/face2.jpg", IMREAD_GRAYSCALE);
+
+	// aplicam acelasi algoritm
 	uchar** input_array = new uchar *;
 	input_array[0] = input_face.isContinuous() ? input_face.data : input_face.clone().data;
 
 	double** input_matrix = getMatrix(input_array, mean_array, length, 1);
 	MatrixXd input_eMatrix = ConvertToEigenMatrix(input_matrix, length, 1);
 	
-	MatrixXd coeff_input(NR_FACES, 1);
-	coeff_input.col(0) = U.colPivHouseholderQr().solve(input_eMatrix.col(0));
+	MatrixXd coeff_input(K, 1);
+	coeff_input.col(0) = U_K.colPivHouseholderQr().solve(input_eMatrix.col(0));
 
-	//cout << "Vectorul de coeficienti pentru input:\n " << coeff_input << endl;
-
-	//gasim distanta minima
-
-	MatrixXf::Index min_index;
+	// gasim distanta euclidiana minima intre vectorul ce contine coeficientii fetei citite
+	// si vectorii ce contin coeficientii fetelor din setul initiale
+	Index min_index;
 	(coeff_faces.colwise() - coeff_input.col(0)).colwise().squaredNorm().minCoeff(&min_index);
 
-	//cout << coeff_faces.col(min_index) << endl;
+	Mat output_face = faces_img[min_index];
 
-	//imshow("input image", input_face);
-	//imshow("person recognized", faces_img[min_index]);
-
-	Mat final_result;
-	hconcat(input_face, faces_img[min_index], final_result);
-	imshow("input face + recognized person", final_result);
+	// afisam fata - input, iar output-ul este reprezentat de fata corespunzatoare distantei minime
+	// adica fata recunoscuta din setul initial
+	Mat input_color, output_color;
+	cvtColor(input_face, input_color, COLOR_GRAY2RGB);
+	cvtColor(output_face, output_color, COLOR_GRAY2RGB);
+	ShowManyImages("Input Face + Recognized Face", 2, input_color, output_color);
 
 	waitKey();
 	return 0;
