@@ -1,4 +1,4 @@
-# Detecția fețelor folosind algoritmul Eigenfaces
+# Recunoașterea fețelor folosind algoritmul Eigenfaces
 
 Universitatea Tehnică "Gheorghe Asachi" din Iași, Facultatea de Automatică și Calculatoare
 
